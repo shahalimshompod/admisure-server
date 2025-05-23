@@ -49,12 +49,20 @@ async function run() {
       res.send(result);
     });
 
+    // get operation for home research work section
+    app.get("/research-work", async (req, res) => {
+      const clgName = req.query.name;
+      const query = { university: clgName };
+      const result = await researchPapers.findOne(query);
+      res.send(result);
+    });
+
     // get operation for details page
     app.get("/college-details/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) };
       const result = await allClg.findOne(query);
-      res.send(result)
+      res.send(result);
     });
 
     // get operation for individual card data

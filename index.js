@@ -26,6 +26,7 @@ async function run() {
     // database collections
     const allClg = client.db("admisure").collection("colleges");
     const researchPapers = client.db("admisure").collection("researchPaper");
+    const users = client.db("admisure").collection("users");
 
     // get operations
     // get operation for home college list
@@ -71,6 +72,104 @@ async function run() {
       const cursor = allClg.find().limit(3);
       const result = await cursor.toArray();
       res.send(result);
+    });
+
+    //get operation for uni-address
+    app.get("/uni-address", async (req, res) => {
+      const { email, name, image } = req?.query;
+
+      console.log(email, name, image);
+
+      const query = {
+        name: name,
+        image: image,
+        email: email,
+      };
+
+      const result = await users.findOne(query);
+      res.send(result);
+    });
+
+    // POST OPERATIONS
+    // post operation for users
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email, image: user.image };
+      const existingUser = await users.findOne(query);
+
+      // checking if user exist
+      if (existingUser) {
+        return res.send({ message: "USER ALREADY EXISTS", insertedId: null });
+      }
+
+      // user added with current added time
+      const userToBeAdded = {
+        ...user,
+        createdAt: new Date(),
+        university: null,
+        address: null,
+      };
+
+      const result = await users.insertOne(userToBeAdded);
+      res.send(result);
+    });
+
+    // PUT OPERATION
+    // put operation for update profile
+    app.put("/update-profile-data", async (req, res) => {
+      const data = req.body;
+      const prevImg = data?.previousImage;
+      const email = data?.email;
+      const prevName = data?.previousName;
+
+      // data to be updated
+      const name = data?.name;
+      const image = data?.newImage;
+      const university = data?.university;
+      const address = data?.address;
+
+      const query = {
+        email: email,
+        name: prevName,
+        image: prevImg,
+      };
+
+      const user = await users.findOne(query);
+
+      if (!user) {
+        return res.send({ message: "USER NOT FOUND", modifiedCount: null });
+      }
+
+      // without new image
+      if (image === undefined) {
+        const dataWithoutImg = {
+          name,
+          university,
+          address,
+        };
+
+        const updatedDocWithoutImg = {
+          $set: dataWithoutImg,
+        };
+        const result = await users.updateOne(query, updatedDocWithoutImg);
+        res.send(result);
+      }
+
+      // with new image
+      if (image) {
+        const dataWithImg = {
+          name,
+          image,
+          university,
+          address,
+        };
+
+        const updatedDocWithImg = {
+          $set: dataWithImg,
+        };
+        const result = await users.updateOne(query, updatedDocWithImg);
+        res.send(result);
+      }
     });
   } finally {
     // Ensures that the client will close when you finish/error

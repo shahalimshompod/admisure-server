@@ -27,11 +27,20 @@ async function run() {
     const allClg = client.db("admisure").collection("colleges");
     const researchPapers = client.db("admisure").collection("researchPaper");
     const users = client.db("admisure").collection("users");
+    const myCollege = client.db("admisure").collection("my-college");
+    const reviews = client.db("admisure").collection("reviews");
 
     // get operations
     // get operation for home college list
     app.get("/homeClgList", async (req, res) => {
       const cursor = allClg.find().limit(3);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // get operation for reviews
+    app.get("/get-review-data", async (req, res) => {
+      const cursor = reviews.find().sort({ createdAt: -1 });
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -78,8 +87,6 @@ async function run() {
     app.get("/uni-address", async (req, res) => {
       const { email, name, image } = req?.query;
 
-      console.log(email, name, image);
-
       const query = {
         name: name,
         image: image,
@@ -87,6 +94,17 @@ async function run() {
       };
 
       const result = await users.findOne(query);
+      res.send(result);
+    });
+
+    // get operation for my- college data
+    app.get("/my-colleges", async (req, res) => {
+      const userEmail = req.query.email;
+      const query = { userEmail: userEmail };
+      const result = await myCollege
+        .find(query)
+        .sort({ createdAt: -1 })
+        .toArray();
       res.send(result);
     });
 
@@ -111,6 +129,52 @@ async function run() {
       };
 
       const result = await users.insertOne(userToBeAdded);
+      res.send(result);
+    });
+
+    app.post("/my-college-application", async (req, res) => {
+      const data = req.body;
+      const finalData = {
+        ...data,
+        createdAt: new Date(),
+      };
+
+      const name = data?.candidateName;
+      const college = data?.selectedCollege;
+      const query = {
+        candidateName: name,
+        selectedCollege: college,
+      };
+
+      const existingUserName = await myCollege.findOne(query);
+
+      if (existingUserName) {
+        return res.send({
+          message: "USER NAME ALREADY EXISTS",
+          insertedId: null,
+        });
+      }
+
+      const result = await myCollege.insertOne(finalData);
+      res.send(result);
+    });
+
+    // post operation for review
+    app.post("/review-data-post", async (req, res) => {
+      const data = req.body;
+      const finalReviewData = {
+        ...data,
+        createdAt: new Date(),
+      };
+
+      if (!finalReviewData) {
+        return res.send({
+          message: "Something went wrong",
+          insertedId: null,
+        });
+      }
+
+      const result = await reviews.insertOne(finalReviewData);
       res.send(result);
     });
 
@@ -170,6 +234,37 @@ async function run() {
         const result = await users.updateOne(query, updatedDocWithImg);
         res.send(result);
       }
+    });
+
+    app.put("/put-individual-review-data/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const query = { _id: new ObjectId(id) };
+
+      const myApplication = await myCollege.findOne(query);
+
+      if (!myApplication) {
+        return res.send({
+          message: "Application not found",
+          modifiedCount: null,
+        });
+      }
+
+      const reviewData = {
+        ...data,
+        createdAt: new Date(),
+      };
+
+      const finalData = {
+        review: reviewData,
+      };
+
+      const updatedDoc = {
+        $set: finalData,
+      };
+
+      const result = await myCollege.updateOne(query, updatedDoc);
+      res.send(result);
     });
   } finally {
     // Ensures that the client will close when you finish/error

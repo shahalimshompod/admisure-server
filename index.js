@@ -108,6 +108,14 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/search-colleges", async (req, res) => {
+      const search = req.query.search || "";
+      const filter = search ? { name: { $regex: search, $options: "i" } } : {};
+
+      const result = await allClg.find(filter).toArray();
+      res.json(result);
+    });
+
     // POST OPERATIONS
     // post operation for users
     app.post("/users", async (req, res) => {
